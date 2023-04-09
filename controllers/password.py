@@ -40,3 +40,8 @@ class PasswordMananger:
     def credentials(self):
         return self.__credentials
         
+    
+    def save(self):
+        with open(self._file_path, "w") as file:
+            file.write(json.dumps(self.__credentials))
+    
