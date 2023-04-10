@@ -28,9 +28,19 @@ async def vivo_main(credentials):
         await browser.click_in_button("text=Continuar")
 
         # Preenchendo a Senha
-        await browser.fill_input('[type="password"]', credentials[0]['password'])
+        await browser.fill_input('[type="password"]', credentials[0]['password'].strip())
+        await browser.page.wait_for_timeout(1*1000)
         await browser.click_in_button("[type='submit']")
 
-        await browser.page.wait_for_selector("[class='subtitle']", timeout=50*1000)        
+        await browser.page.wait_for_selector("[class='subtitle']", timeout=50*1000)
+        await browser.page.hover("[class='subtitle']", timeout=50*1000)
+
+        # Acessar Faturas
+        invoice = await browser.page.wait_for_selector("text=Contas")
+        await invoice.hover()
+
+        invoice_button = await browser.page.wait_for_selector("text='Detalhes de contas e pagamentos'")
+        await invoice_button.click()
+
         await browser.page.wait_for_timeout(50000)
 

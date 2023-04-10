@@ -62,8 +62,8 @@ async def zaaz_main(credentials):
                     # Loop en cada fatura
                     
                     try:
-                        await item.wait_for_selector("text=CARREGAR FATURAS", timeout=5*1000)
-                        result = await item.query_selector("text=CARREGAR FATURAS")
+                        await item.wait_for_selector("[class='button_card']", timeout=5*1000)
+                        result = await item.query_selector("[class='material-icons']")
                         await result.click()
 
                         # Capturando o preço da fatura
@@ -117,6 +117,7 @@ async def zaaz_main(credentials):
                         if em_dia:
                             # Não possui nenhuma fatura em aberto.
                             pass
+
                 # Encerrando a seção da conta
                 await browser.page.click('[class="material-icons"]')
                 await browser.page.wait_for_load_state("load")
