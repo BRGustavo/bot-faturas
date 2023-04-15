@@ -1,13 +1,14 @@
 from playwright.async_api import async_playwright, TimeoutError
 from .browser import BrowserService
+from datetime import date
 import base64
 import uuid
 import os
 
 
-async def zaaz_main(credentials):
+async def generic_zaaz_main(credentials, zaaz=True):
     """
-    Objetivo do código abaixo é realizar o login no painel da ZaaZ com o usuário e senha das agências e sede
+    Objetivo do código abaixo é realizar o login no painel da ZaaZ e Netsul com o usuário e senha das agências e sede
     e capturar os boletos em aberto.
     
     Para tal, é necessário que as inforamções de usuário e senha do painel estejam atualizados no arquivo "passwords.json".
@@ -15,27 +16,34 @@ async def zaaz_main(credentials):
     O passso a passo seguido será:
     - Ler o arquivo de senhas;
     - Abrir o navegador chromium;
-    - Acessar a URL do painel da ZaaZ;
+    - Acessar a URL do painel da ZaaZ e NetSul;
     - Tentar realizar o Login;
     - Navegar até as faturas;
     - Capturar o arquivo "src" (URL do boleto);
     - Armazenar em uma pasta local.
     """
+    url = None
+    if zaaz:
+        url = "https://sistema.zaaztelecom.com.br/central_assinante_web/login"
+    else:
+        url = "https://ixc.netinfobrasil.com.br/central_assinante_web/login"
 
     async with async_playwright() as playwright: # Código está usando o modo assincrono
         browser = BrowserService(playwright)
         await browser.start()
 
         invoice_list = []
-        # Executando o Login
-        await browser.navigate("https://sistema.zaaztelecom.com.br/central_assinante_web/login")
+
+        await browser.navigate(url)
 
         for zaaz_logins in credentials:
 
             try: # Tentando fazer login com as credências fornecidas
 
                 await browser.fill_input("[class='login']", zaaz_logins['user'])
-                await browser.fill_input("[type='password']", zaaz_logins['password'])
+                if zaaz:
+                    await browser.fill_input("[type='password']", zaaz_logins['password'])
+                
                 await browser.click_in_button("[class='btn btn-info btn-login is-full']")
                 await browser.page.wait_for_load_state("load")
                 
@@ -55,69 +63,90 @@ async def zaaz_main(credentials):
                 await browser.click_in_button("[id='pg_fatura']")
 
                 # Selecionado e dividindo todas as faturas encontradas
-                await browser.page.wait_for_selector("[class='faturas page col-md-12 animated slideInUp']")
-                list_itens = await browser.page.query_selector_all("[class='faturas page col-md-12 animated slideInUp'] > div")
+                menu_invoice = await browser.page.wait_for_selector("[class='faturas page col-md-12 animated slideInUp']")
+                await browser.page.wait_for_load_state("load")
 
-                for item in list_itens:
-                    # Loop en cada fatura
-                    
-                    try:
-                        await item.wait_for_selector("[class='button_card']", timeout=5*1000)
-                        result = await item.query_selector("[class='material-icons']")
-                        await result.click()
+                list_itens = await menu_invoice.query_selector_all("[class='card']")
+                await browser.page.wait_for_load_state("load")
 
-                        # Capturando o preço da fatura
-                        value_price = await item.wait_for_selector('[data-th="Valor até o vencimento:"]')
-                        value_price = await value_price.inner_text() 
-                        
-                        # Capturando vencimento
-                        invoice_date = await item.wait_for_selector('[data-th="Vencimento:"]')
-                        invoice_date = await invoice_date.inner_text()
+                async def execute_scrapping():
+                    for item in list_itens:
+                        # Loop en cada fatura
+                        try:
+                            result = await item.wait_for_selector("[class='button_card']", timeout=1*1000)
+                            await result.click() 
+        
 
-                        # Abrindo a Modal da fatura
-                        modal = await item.query_selector('[data-th="Ações:"]')
-                        await modal.click()
+                            list_invoices = await item.query_selector_all("tbody > tr")
+                            
+                            for invoice in list_invoices:
+            
+                                # Capturando o preço da fatura
+                                value_price = await invoice.wait_for_selector('[data-th="Valor até o vencimento:"]')
+                                value_price = await invoice.inner_text() 
+                            
+                                # Capturando vencimento
+                                invoice_date = await invoice.wait_for_selector('[data-th="Vencimento:"]')
+                                invoice_date = await invoice_date.inner_text()
 
-                        await browser.page.wait_for_load_state("load")
+                                get_today_date = date.today()
+                                current_month = get_today_date.strftime("%m")
+                                current_year = get_today_date.strftime("%Y")
+                                
+                                invoice_month = invoice_date.split("/")[1]
+                                invoice_year = invoice_date.split("/")[2]
 
-                        # Clicando no icone do PDF
-                        icon = await browser.page.wait_for_selector("[class='material-icons icones-coluna icone-fatura']")
-                        await icon.click()
+                                if invoice_month <= current_month and invoice_year <= current_year:
+                                    
+                                    # Abrindo a Modal da fatura
+                                    modal = await invoice.query_selector('[data-th="Ações:"]')
+                                    await modal.click()
 
-                        # Capturando o "source" do arquivo
-                        element = await browser.page.wait_for_selector("[class='col-md-12 scroll'] > embed")
-                        src = await element.get_attribute("src")
+                                    await browser.page.wait_for_load_state("load")
 
-                        # Transformando URL em arquivo e definido o nome.
-                        decode_contet = base64.b64decode(src.split(",")[1])
-                        file_name = str(uuid.uuid4())
+                                    # Clicando no icone do PDF
+                                    icon = await browser.page.wait_for_selector("[class='material-icons icones-coluna icone-fatura']")
+                                    await icon.click()
 
-                        # Validando se a pasta "Faturas" e "ZaaZ" existem. Caso não, cria.
-                        save_folder = "./faturas/zaaz/"
-                        if not os.path.exists(save_folder):
-                            os.makedirs(save_folder)
+                                    # Capturando o "source" do arquivo
+                                    element = await browser.page.wait_for_selector("[class='col-md-12 scroll'] > embed")
+                                    src = await element.get_attribute("src")
 
-                        # Salvando o PDF na pasta
-                        with open(f"{save_folder}{file_name}.pdf", "wb") as f:
-                            f.write(decode_contet)
+                                    # Transformando URL em arquivo e definido o nome.
+                                    decode_contet = base64.b64decode(src.split(",")[1])
+                                    file_name = str(uuid.uuid4())
 
-                        invoice_list.append({
-                            'src': f"{file_name}.pdf",
-                            'price': value_price,
-                            'due date': invoice_date
-                        })
+                                    if zaaz:
+                                        # Validando se a pasta "Faturas" e "ZaaZ" existem. Caso não, cria.
+                                        save_folder = "./faturas/zaaz/"
+                                    else:
+                                        save_folder = "./faturas/netsul/"
 
-                        # Fechando Modal
-                        icon_close = await browser.page.wait_for_selector("[id='modalImpressaoClose']")
-                        await icon_close.click()
-                        await browser.page.wait_for_load_state("load")
+                                    if not os.path.exists(save_folder):
+                                        os.makedirs(save_folder)
 
-                    except TimeoutError:
-                        em_dia = await item.wait_for_selector("[class='faturas_em_dia']")
-                        if em_dia:
-                            # Não possui nenhuma fatura em aberto.
-                            pass
+                                    # Salvando o PDF na pasta
+                                    with open(f"{save_folder}{file_name}.pdf", "wb") as f:
+                                        f.write(decode_contet)
 
+                                    invoice_list.append({
+                                        'src': f"{file_name}.pdf",
+                                        'price': value_price,
+                                        'due date': invoice_date
+                                    })
+
+                                    # Fechando Modal
+                                    icon_close = await browser.page.wait_for_selector("[id='modalImpressaoClose']")
+                                    await icon_close.click()
+                                    await browser.page.wait_for_load_state("load")
+
+                        except TimeoutError:
+                            em_dia = await item.wait_for_selector("[class='faturas_em_dia']")
+                            if em_dia:
+                                # Não possui nenhuma fatura em aberto.
+                                pass
+
+                await execute_scrapping()
                 # Encerrando a seção da conta
                 await browser.page.click('[class="material-icons"]')
                 await browser.page.wait_for_load_state("load")
@@ -125,7 +154,7 @@ async def zaaz_main(credentials):
 
             except ValueError:
                 # Contata que o usuário e senha está errado e recarrega o site.
-                await browser.navigate("https://sistema.zaaztelecom.com.br/central_assinante_web/login")
+                await browser.navigate(url)
                 continue
 
         return invoice_list

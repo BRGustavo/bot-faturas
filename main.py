@@ -1,6 +1,6 @@
 import asyncio
 from controllers.password import PasswordMananger
-from controllers.zaaz_automation import zaaz_main
+from controllers.zaaz_automation import generic_zaaz_main
 from controllers.vivo_automation import vivo_main
 from fastapi import FastAPI
 from models.password import PasswordModal
@@ -13,6 +13,7 @@ app = FastAPI()
 @app.get("/credentials/", tags=['Credênciais'], summary=['Consultando credênciais de login.'])
 async def get_passwords():
     global passwords
+    passwords = PasswordMananger()
     senhas = passwords.credentials
     return {"response":senhas}
 
@@ -30,18 +31,20 @@ async def post_passwords(password:PasswordModal):
 
     return {'response': password}
 
-@app.get("/automations/zaaz/", tags=['Automações'], summary="Iniciando robo de scrapping ZaaZ.")
+@app.get("/invoices/zaaz/", tags=['Automação de Faturas'], summary="Iniciando robô de scrapping ZaaZ.")
 async def zaaz_connect():
-    result_scrapping = await zaaz_main(passwords.credentials['zaaz'])
+    result_scrapping = await generic_zaaz_main(passwords.credentials['zaaz'])
     return {"response": result_scrapping}
 
-@app.get("/automations/vivo/", tags=['Automações'], summary="Iniciando robo de scrapping Vivo.")
+@app.get("/invoices/netsul/", tags=['Automação de Faturas'], summary="Iniciando robô de scrapping NetSul.")
+async def netsul_connect():
+    result_scrapping = await generic_zaaz_main(passwords.credentials['netsul'], False)
+    return {"response": result_scrapping}
+
+@app.get("/invoices/vivo/", tags=['Automação de Faturas'], summary="Iniciando robô de scrapping Vivo.")
 async def vivo_connect():
-    await vivo_main(passwords.credentials['vivo'])
-    return {"message":"Process Started"}
-
-
-
+    return_msg = await vivo_main(passwords.credentials['vivo'])
+    return {"message":return_msg}
 
 if __name__ == "__main__":
     # Carregando senhas
