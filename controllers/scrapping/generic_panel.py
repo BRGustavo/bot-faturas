@@ -1,5 +1,5 @@
 from playwright.async_api import async_playwright, TimeoutError
-from .browser import BrowserService
+from ..browser import BrowserService
 from datetime import date
 import base64
 import uuid

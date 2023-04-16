@@ -1,4 +1,4 @@
-from .browser import BrowserService
+from ..browser import BrowserService
 from playwright.async_api import async_playwright, TimeoutError
 import uuid
 import os

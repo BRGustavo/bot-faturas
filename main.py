@@ -1,12 +1,12 @@
 import asyncio
 from controllers.password import PasswordMananger
-from controllers.zaaz_automation import generic_zaaz_main
-from controllers.vivo_automation import vivo_main
+from controllers.scrapping.generic_panel import generic_zaaz_main
+from controllers.scrapping.vivo_panel import vivo_main
+from controllers.scrapping.embratel_panel import embratel_main
 from fastapi import FastAPI
 from models.password import PasswordModal
 
 import uvicorn
-
 
 app = FastAPI()
 
@@ -44,6 +44,11 @@ async def netsul_connect():
 @app.get("/invoices/vivo/", tags=['Automação de Faturas'], summary="Iniciando robô de scrapping Vivo.")
 async def vivo_connect():
     return_msg = await vivo_main(passwords.credentials['vivo'])
+    return {"message":return_msg}
+
+@app.get("/invoices/embratel/", tags=['Automação de Faturas'], summary="Iniciando robô de scrapping Embratel.")
+async def embratel_connect():
+    return_msg = await embratel_main(passwords.credentials['embratel'])
     return {"message":return_msg}
 
 if __name__ == "__main__":
