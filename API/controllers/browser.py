@@ -1,3 +1,6 @@
+import zipfile
+import os
+
 class BrowserService:
     def __init__(self, playwright):
         self.playwright = playwright
@@ -27,4 +30,13 @@ class BrowserService:
         await self.page.wait_for_selector(button_name, state="visible")
         await self.page.click(button_name)
         await self.page.wait_for_load_state("load")
-    
+
+    async def extract_files(self, folder, filename):
+        # Extraindo arquivos
+        file_item = zipfile.ZipFile(f"{folder}{filename}.zip")
+        file_item.extractall(f"{folder}Folder_{filename}")
+        file_item.close()
+
+        # Removendo arquivos anteriores
+        if os.path.isfile(f"{folder}{filename}.zip"):
+            os.remove(f"{folder}{filename}.zip")

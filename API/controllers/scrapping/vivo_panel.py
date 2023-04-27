@@ -2,7 +2,7 @@ from ..browser import BrowserService
 from playwright.async_api import async_playwright, TimeoutError
 import uuid
 import os
-
+import zipfile
 
 async def vivo_main(credentials):
     async with async_playwright() as playwright:
@@ -34,9 +34,15 @@ async def vivo_main(credentials):
         await browser.page.wait_for_timeout(1*1000)
         await browser.page.type('[type="password"]', credentials[0]['password'].strip(), delay=100)
         await browser.click_in_button("[type='submit']")
+        await browser.page.wait_for_load_state("load")
+        
+        try:
+            await browser.page.wait_for_load_state("domcontentloaded")
+            await browser.page.wait_for_selector("[class='subtitle']", timeout=50*1000)
+            await browser.page.hover("[class='subtitle']", timeout=50*1000)
+        except TimeoutError:
+            await browser.page.wait_for_load_state("domcontentloaded")
 
-        await browser.page.wait_for_selector("[class='subtitle']", timeout=50*1000)
-        await browser.page.hover("[class='subtitle']", timeout=50*1000)
 
         # Verificando Downloads
         find_another_invoice = False
@@ -78,7 +84,7 @@ async def vivo_main(credentials):
 
             download_now_button = await browser.page.wait_for_selector("text='Baixar agora'")
             await download_now_button.click()
-
+        
             detail_invoice_button = await browser.page.wait_for_selector("[class='dropdown-item dropdown-button__option']")
             
             folder='./faturas/vivo/'
@@ -86,7 +92,7 @@ async def vivo_main(credentials):
             if not os.path.exists(folder):
                 os.makedirs(folder)
             
-            filename = uuid.uuid4()
+            filename = str(uuid.uuid4()).replace("-","").strip()
 
             # Baixando fatura em PDF       
             async with browser.page.expect_download() as download_info:
@@ -94,10 +100,18 @@ async def vivo_main(credentials):
                 await detail_invoice_button.click()
 
             download = await download_info.value
-            await download.save_as(f"{folder}{filename}.pdf")
-            return f"{filename}.pdf baixado com sucesso"
+            await download.save_as(f"{folder}{filename}.zip")
+
+            await browser.extract_files(folder, filename)
+            
+            return {
+            "mensagem": "Arquivos baixados com sucesso",
+            "status":"200",
+            "folder": f"Folde_{filename}"
+        }
     
-    return "Ocorreu um problema ao executar"
-
-
-
+    return {
+        "mensagem": "Ocorreu um erro ao processar as informações",
+        "status":"500",
+        "folder": "Null"
+    }

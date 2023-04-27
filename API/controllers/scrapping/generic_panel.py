@@ -73,7 +73,9 @@ async def generic_zaaz_main(credentials, zaaz=True):
                     for item in list_itens:
                         # Loop en cada fatura
                         try:
-                            result = await item.wait_for_selector("[class='button_card']", timeout=1*1000)
+                            await browser.page.wait_for_load_state("domcontentloaded")
+                            
+                            result = await item.wait_for_selector("[class='button_card']", timeout=2*1000)
                             await result.click() 
         
 

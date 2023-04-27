@@ -2,3 +2,5 @@ venv/
 passwords.json
 __pycache__/
 faturas/
+node_modules/
+Documentacao/
