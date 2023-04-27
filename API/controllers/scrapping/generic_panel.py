@@ -6,7 +6,7 @@ import uuid
 import os
 
 
-async def generic_zaaz_main(credentials, zaaz=True):
+async def generic_zaaz_main(credentials, zaaz=True, ignore_data=False):
     """
     Objetivo do código abaixo é realizar o login no painel da ZaaZ e Netsul com o usuário e senha das agências e sede
     e capturar os boletos em aberto.
@@ -19,8 +19,12 @@ async def generic_zaaz_main(credentials, zaaz=True):
     - Acessar a URL do painel da ZaaZ e NetSul;
     - Tentar realizar o Login;
     - Navegar até as faturas;
+    - Verificar se está no mês de competência;
     - Capturar o arquivo "src" (URL do boleto);
+    - Enviar um request assincrôno para baixar o PDF;
     - Armazenar em uma pasta local.
+
+    Tanto a ZaaZ quanto a NetSul usam o mesmo painel de faturas genéricos.
     """
     url = None
     if zaaz:
@@ -69,15 +73,30 @@ async def generic_zaaz_main(credentials, zaaz=True):
                 list_itens = await menu_invoice.query_selector_all("[class='card']")
                 await browser.page.wait_for_load_state("load")
 
+                count_try = 0
+
                 async def execute_scrapping():
                     for item in list_itens:
                         # Loop en cada fatura
                         try:
                             await browser.page.wait_for_load_state("domcontentloaded")
+
+                            try:
+                                # Tentando achar o botão "CARREGAR FATURAS"
+                                result = await item.wait_for_selector("[class='button_card']", timeout=2*1000)
+                                await result.click() 
                             
-                            result = await item.wait_for_selector("[class='button_card']", timeout=2*1000)
-                            await result.click() 
-        
+                            except Exception:
+                                # Caso não encontre pelo elemento, ele tentará pelo texto.
+                                if count_try < 1:
+                                    await browser.page.reload()
+                                    count_try =+ 1
+
+                                    await execute_scrapping()
+
+                                result = await item.wait_for_selector('(//*[@class="card"]/div[2]/div/div)', timeout=2*1000)
+                                await result.click()
+                                
 
                             list_invoices = await item.query_selector_all("tbody > tr")
                             
@@ -98,7 +117,9 @@ async def generic_zaaz_main(credentials, zaaz=True):
                                 invoice_month = invoice_date.split("/")[1]
                                 invoice_year = invoice_date.split("/")[2]
 
-                                if invoice_month <= current_month and invoice_year <= current_year:
+                                # Valida se está no mês de competência. 
+                                # Pode ignorar a validação de data se o parâmetro "ignore_data" for passado como True.
+                                if (invoice_month <= current_month and invoice_year <= current_year) or ignore_data == True:
                                     
                                     # Abrindo a Modal da fatura
                                     modal = await invoice.query_selector('[data-th="Ações:"]')
