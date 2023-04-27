@@ -7,6 +7,7 @@ class BrowserService:
         self.browser = None
         self.context = None
         self.page = None
+        self.count_try = 0
 
     async def start(self):
         self.browser = await self.playwright.chromium.launch(headless=False)

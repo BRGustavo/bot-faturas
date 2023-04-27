@@ -73,10 +73,11 @@ async def generic_zaaz_main(credentials, zaaz=True, ignore_data=False):
                 list_itens = await menu_invoice.query_selector_all("[class='card']")
                 await browser.page.wait_for_load_state("load")
 
-                count_try = 0
 
                 async def execute_scrapping():
+
                     for item in list_itens:
+                        result = None
                         # Loop en cada fatura
                         try:
                             await browser.page.wait_for_load_state("domcontentloaded")
@@ -86,15 +87,15 @@ async def generic_zaaz_main(credentials, zaaz=True, ignore_data=False):
                                 result = await item.wait_for_selector("[class='button_card']", timeout=2*1000)
                                 await result.click() 
                             
-                            except Exception:
+                            try:
+                                # Tentando achar o botão "CARREGAR FATURAS"
+                                result = await item.wait_for_selector("[class='button_card']", timeout=2*1000)
+                            
+                            except TimeoutError:
                                 # Caso não encontre pelo elemento, ele tentará pelo texto.
-                                if count_try < 1:
-                                    await browser.page.reload()
-                                    count_try =+ 1
-
-                                    await execute_scrapping()
-
-                                result = await item.wait_for_selector('(//*[@class="card"]/div[2]/div/div)', timeout=2*1000)
+                                    await browser.page.wait_for_timeout(1*1000)
+                                    result = await item.wait_for_selector('button', timeout=10*1000)
+                            finally:
                                 await result.click()
                                 
 

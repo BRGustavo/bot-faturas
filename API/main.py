@@ -6,6 +6,7 @@ from controllers.scrapping.embratel_panel import embratel_main
 from fastapi import FastAPI
 from models.password import PasswordModal
 from controllers.others.vivo_rateio import ApportionmentVivo
+from controllers.others.fluid_panel import fluid_access_panel
 
 import uvicorn
 
@@ -64,12 +65,12 @@ async def embratel_connect():
     return_msg = await embratel_main(passwords.credentials['embratel'])
     return {"message":return_msg}
 
-@app.get("/apportionment/vivo/", tags=['Rateio de Faturas'], summary="Localizando e gerando um arquivo com o custo das linhas por agência.")
-async def vivo_apportionment():
-    apportionment = ApportionmentVivo()
-    
-    return_msg = "Null"
-    return {"message":return_msg}
+
+@app.get("/apportionment/fluid/", tags=['Gestão Paineis'], summary="Acessa o Painel do fluid")
+async def fluid_panel():
+    apportionment = await fluid_access_panel(passwords.credentials['fdn'])
+    return "Lorem"
+
 
 if __name__ == "__main__":
     # Carregando senhas
