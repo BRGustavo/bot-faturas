@@ -1,13 +1,12 @@
 import asyncio
 from controllers.password import PasswordMananger
-from controllers.scrapping.generic_panel import generic_zaaz_main
-from controllers.scrapping.vivo_panel import vivo_main
+from controllers.scrapping import GenericInvoicePanel, NetSulInvoicePanel, VivoInvoicePanel
 from controllers.scrapping.embratel_panel import embratel_main
 from fastapi import FastAPI
 from models.password import PasswordModal
 from controllers.others.vivo_rateio import ApportionmentVivo
-from controllers.others.fluid_panel import fluid_access_panel
 
+from controllers.others import FluidNow
 import uvicorn
 
 app = FastAPI(
@@ -38,7 +37,7 @@ async def post_passwords(password:PasswordModal):
     passwords.credentials[password.provedor].append({
         'user': password.user,
         'password': password.password,
-        'login_page': password.login_page
+        'cidade': password.cidade
     })
 
     passwords.save()
@@ -47,17 +46,33 @@ async def post_passwords(password:PasswordModal):
 
 @app.get("/invoices/zaaz/", tags=['Download de Faturas'], summary="Iniciando robô de scrapping ZaaZ.")
 async def zaaz_connect():
-    result_scrapping = await generic_zaaz_main(passwords.credentials['zaaz'])
+    result_scrapping = ""
+    url = "https://sistema.zaaztelecom.com.br/central_assinante_web/login"
+    async with GenericInvoicePanel(url, passwords.credentials['zaaz']) as zaaz_panel:
+        result_scrapping = await zaaz_panel.execute_in_all_panel()
     return {"response": result_scrapping}
 
 @app.get("/invoices/netsul/", tags=['Download de Faturas'], summary="Iniciando robô de scrapping NetSul.")
 async def netsul_connect():
-    result_scrapping = await generic_zaaz_main(passwords.credentials['netsul'], False)
+    result_scrapping = ""
+    url = "https://ixc.netinfobrasil.com.br/central_assinante_web/login"
+    async with NetSulInvoicePanel(url, passwords.credentials['netsul']) as zaaz_panel:
+        result_scrapping = await zaaz_panel.execute_in_all_panel()
     return {"response": result_scrapping}
 
 @app.get("/invoices/vivo/", tags=['Download de Faturas'], summary="Iniciando robô de scrapping Vivo.")
 async def vivo_connect():
-    return_msg = await vivo_main(passwords.credentials['vivo'])
+    return_msg = {"status": 500,"message": "Ocorreu um erro interno no servidor" }
+    try:
+        async with VivoInvoicePanel(passwords.credentials['vivo']) as vivo_panel:
+            await vivo_panel.login()
+            await vivo_panel.navigate_to_invoice()
+            
+    except PermissionError as error:
+        return_msg = {
+            'status': 401,
+            'message': str(error)
+        }
     return return_msg
 
 @app.get("/invoices/embratel/", tags=['Download de Faturas'], summary="Iniciando robô de scrapping Embratel.")
@@ -66,11 +81,23 @@ async def embratel_connect():
     return {"message":return_msg}
 
 
-@app.get("/apportionment/fluid/", tags=['Gestão Paineis'], summary="Acessa o Painel do fluid")
-async def fluid_panel():
-    apportionment = await fluid_access_panel(passwords.credentials['fdn'])
-    return "Lorem"
+@app.get("/apportionment/fluid/process/{id_process}", tags=['Gestão Paineis'], summary="Acessa o Painel do fluid")
+async def fluid_panel_get_process(id_process:str):
+    return_msg = {"status": 500,"message": "Ocorreu um erro interno no servidor" }
+    process_list = id_process.split(',')
+    try:
+        async with FluidNow(passwords.credentials['fdn']) as fluid_panel:
+            await fluid_panel.login()
+            return_msg['message'] = await fluid_panel.find_process(process_list)
+            
+    except PermissionError as error:
+        return_msg = {
+            'status': 401,
+            'message': str(error)
+        }
 
+    return return_msg
+    
 
 if __name__ == "__main__":
     # Carregando senhas
