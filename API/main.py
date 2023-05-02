@@ -1,6 +1,6 @@
 import asyncio
 from controllers.password import PasswordMananger
-from controllers.scrapping import GenericInvoicePanel, NetSulInvoicePanel, VivoInvoicePanel
+from controllers.scrapping import GenericInvoicePanel, NetSulInvoicePanel, VivoInvoicePanel, MhnetInvoicePanel
 from controllers.scrapping.embratel_panel import embratel_main
 from fastapi import FastAPI
 from models.password import PasswordModal
@@ -68,6 +68,20 @@ async def vivo_connect():
             await vivo_panel.login()
             await vivo_panel.navigate_to_invoice()
             
+    except PermissionError as error:
+        return_msg = {
+            'status': 401,
+            'message': str(error)
+        }
+    return return_msg
+
+@app.get("/invoices/mhnet/", tags=['Download de Faturas'], summary="Iniciando robô de scrapping MhNet.")
+async def mhnet_connect():
+    return_msg = {"status": 500,"message": "Ocorreu um erro interno no servidor" }
+    try:
+        async with MhnetInvoicePanel(passwords.credentials['mhnet']) as mhnet_automation:
+            await mhnet_automation.execute_in_all_panel()
+ 
     except PermissionError as error:
         return_msg = {
             'status': 401,

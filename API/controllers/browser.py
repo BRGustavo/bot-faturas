@@ -125,11 +125,11 @@ class BrowserAutomation:
     async def return_element_content(self, selector, children="", wait_timeout=30):
         if isinstance(selector, str):
             element_selector = await self.page.wait_for_selector(selector, timeout=wait_timeout*1000)
-            return element_selector.inner_text()
+            return await element_selector.inner_text()
         else:
             element_selector = await selector.wait_for_selector(children, timeout=wait_timeout*1000)
     
-            return element_selector.inner_text()
+            return await element_selector.inner_text()
             
     
     @wait_for_all_load
@@ -149,3 +149,6 @@ class BrowserAutomation:
         # Removendo arquivos anteriores
         if os.path.isfile(f"{folder}{filename}.zip"):
             os.remove(f"{folder}{filename}.zip")
+
+    async def get_url(self):
+        return self.page.url

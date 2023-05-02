@@ -41,8 +41,7 @@ class FluidNow(BrowserAutomation):
             pass
         else:
             await self.wait_timeout(8)
-            print(self.page.url)
-            now_url = ""
+            now_url = await self.get_url()
             if now_url == self.login_url:
                 raise PermissionError("Não foi possivel realizar o login.")
             
@@ -51,7 +50,7 @@ class FluidNow(BrowserAutomation):
         process_return_list = []
 
         await self.navigate_url("https://0753.fluid.prd.sicredi.cloud/processos/processo/pesquisar")
-        if await self.page.url() == self.login_url and self.logged_in:
+        if await self.get_url() == self.login_url and self.logged_in:
             try:
                 await self.login()
                 await self.find_process(process_list)
@@ -63,6 +62,7 @@ class FluidNow(BrowserAutomation):
     
         for id_process in process_list:
             await self.navigate_url(f"https://0753.fluid.prd.sicredi.cloud/processos/processo/visualizar/id/{id_process}")
+            await self.wait_timeout(10)
             instance_status = await self.return_element_content('(//*[@id="container-body"]/div[1]/div/div/div[1]/ul/li[4])')
             process_return_list.append({
                 'process': str(id_process),

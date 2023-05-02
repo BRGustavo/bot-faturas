@@ -14,7 +14,7 @@ class GenericInvoicePanel(BrowserAutomation):
         self.credentials = credentials
         self.scrapping_return = []
         self.current_in_loop = 0
-
+        
         super().__init__
     
     @staticmethod
@@ -69,9 +69,10 @@ class GenericInvoicePanel(BrowserAutomation):
     @wait_for_domcontent_load
     async def list_card_invoice(self, element:JSHandle):
         try:
+            await self.wait_timeout(2)
             await self.page.wait_for_load_state("load")
             await self.page.wait_for_load_state("domcontentloaded")
-
+    
             click_to_expand = await element.wait_for_selector("[class='button_card']", timeout=3*1000)
             await self.click_in_button(click_to_expand)
 
@@ -249,3 +250,48 @@ class VivoInvoicePanel(BrowserAutomation):
             os.makedirs(folder)
         
         return folder
+
+class MhnetInvoicePanel(BrowserAutomation):
+    def __init__(self, credentials:list):
+        self.credentials = credentials
+        super().__init__()
+    
+    async def login(self, user, password):
+        await self.navigate_url("https://portal.mhnet.com.br/auth/login")
+        await self.wait_timeout(1)
+
+        await self.fill_input("[name='username']", user, delay=100)
+        await self.fill_input("[name='password']", password, delay=100)
+        await self.click_in_button("[class='MuiButton-label']")
+
+        await self.page.wait_for_load_state("load")
+        try:
+            find_invoice_button = await self.page.wait_for_selector('((//*[@id="root-portal-erp-react"]/div/div/main/div/div/div[2]/div[1]/div[1]/div/div[2]/button/span[1]))', timeout=50*1000)
+            if find_invoice_button:
+                await self.find_invoices()
+            else:
+                raise PermissionError("Não foi possivel localizar o menu 'Minhas Faturas'")
+        except TimeoutError:
+            current_url = await self.get_url()
+            if current_url == "https://portal.mhnet.com.br/auth/login":
+                await self.navigate_url("https://portal.mhnet.com.br/auth/login") 
+                raise PermissionError("Não conseguiu realizar o login.")
+            else:
+                await self.login(user, password)
+
+    async def logout(self):
+        await self.navigate_url("https://portal.mhnet.com.br/portal")
+        await self.click_in_button('[title="sair"]')
+
+    async def find_invoices(self):
+        await self.click_in_button('(//*[@id="root-portal-erp-react"]/div/div/main/div/div/div[2]/div[1]/div[1]/div/div[2]/button/span[1])')
+        await self.wait_timeout(4)
+
+    async def execute_in_all_panel(self):
+        for login_info in self.credentials:
+            await self.login(login_info['user'], login_info['password'])
+            await self.logout()
+            
+
+
+
