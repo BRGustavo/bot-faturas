@@ -3,35 +3,6 @@ import zipfile
 import os
 from datetime import date
 
-class BrowserService:
-    def __init__(self, playwright:async_playwright):
-        self.playwright = playwright
-        self.browser = None
-        self.context = None
-        self.page = None
-        self.count_try = 0
-       
-    async def start(self):
-        self.browser = await self.playwright.chromium.launch(headless=False)
-        self.context = await self.browser.new_context()
-        self.page = await self.context.new_page()
-    
-    async def close(self):
-        
-        await self.browser.close()
-
-    async def navigate(self, url:str="https://www.google.com"):
-        await self.page.goto(url)
-        await self.page.wait_for_load_state("load")
-
-
-    async def click_in_button(self, button_name, double_click=False):
-        await self.page.wait_for_load_state("load")
-        await self.page.wait_for_selector(button_name, state="visible")
-        await self.page.click(button_name)
-        await self.page.wait_for_load_state("load")            
-    
-
 class BrowserAutomation:
     def __init__(self):
         self.__play_wright = None
@@ -70,7 +41,7 @@ class BrowserAutomation:
             self.page = new_page_try
             await self.page.goto(url)
 
-    async def __start_process_browser(self, url:str=None, head_less:bool=False):
+    async def __start_process_browser(self, url:str=None, head_less:bool=True):
         self.__play_wright = await async_playwright().start()
         self.browser = await self.__play_wright.chromium.launch(headless=head_less)
         self.context = await self.browser.new_context()

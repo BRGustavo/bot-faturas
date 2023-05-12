@@ -1,5 +1,5 @@
 from playwright.async_api import async_playwright, TimeoutError, JSHandle
-from ..browser import BrowserService, BrowserAutomation
+from ..browser import BrowserAutomation
 from datetime import date
 import base64
 import uuid
@@ -90,7 +90,13 @@ class GenericInvoicePanel(BrowserAutomation):
                 # Valida se está tudo em dia mesmo.
                 invoices_ok = await element.wait_for_selector("[class='faturas_em_dia']", timeout=3*1000)
                 if invoices_ok:
-                    print("A Fatura está em dia")
+                    self.scrapping_return.append({
+                        
+                        "status": "A Fatura está em dia!",
+                        "CNPJ": self.credentials[self.current_in_loop]['user'],
+                        'cidade': self.credentials[self.current_in_loop]['cidade'],
+                        "baixado": "Não"
+                        })
 
             except TimeoutError:
                 raise NameError("Não conseguiu localizar o item")
@@ -141,7 +147,8 @@ class GenericInvoicePanel(BrowserAutomation):
             await self.click_in_button("[id='modalImpressaoClose']")
         return {
             "valor": value_price, 'vencimento': invoice_date, 'arquivo': f'{file_name}.pdf',
-            'baixado': 'Sim' if self.ignore_data else "Não", "CNPJ": self.credentials[self.current_in_loop]['user'],
+            'baixado': 'Sim' if self.ignore_data else "Não", 
+            "CNPJ": self.credentials[self.current_in_loop]['user'],
             'cidade': self.credentials[self.current_in_loop]['cidade']
         }
         

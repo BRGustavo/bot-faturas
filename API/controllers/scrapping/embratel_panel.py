@@ -1,10 +1,10 @@
 from playwright.async_api import async_playwright, TimeoutError
-from ..browser import BrowserService
+from ..browser import BrowserAutomation
 from datetime import date
 
 async def embratel_main(credentials):
     async with async_playwright() as playwright:
-        browser = BrowserService(playwright)
+        browser = BrowserAutomation(playwright)
         await browser.start()
 
         await browser.navigate("https://webebt01.embratel.com.br/embratelonline/")

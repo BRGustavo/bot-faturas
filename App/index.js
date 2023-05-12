@@ -6,13 +6,19 @@ let theWindow;
 
 function createWindow() {
     theWindow = new BrowserWindow({
-    width: 800,
+    width: 950,
     height: 600,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
     },
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#2F3241',
+      symbolColor: '#74b1be'
+    }
   });
-  theWindow.loadFile("index.html");
+  theWindow.loadFile("pages/index.html");
 
 }
 

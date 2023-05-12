@@ -1,3 +1,4 @@
+import re
 import asyncio
 from controllers.password import PasswordMananger
 from controllers.scrapping import GenericInvoicePanel, NetSulInvoicePanel, VivoInvoicePanel, MhnetInvoicePanel
@@ -102,6 +103,7 @@ async def fluid_panel_get_process(id_process:str):
     try:
         async with FluidNow(passwords.credentials['fdn']) as fluid_panel:
             await fluid_panel.login()
+            return_msg['status'] = 200
             return_msg['message'] = await fluid_panel.find_process(process_list)
             
     except PermissionError as error:
@@ -114,8 +116,9 @@ async def fluid_panel_get_process(id_process:str):
     
 
 if __name__ == "__main__":
-    # Carregando senhas
-    passwords = PasswordMananger()
 
+
+    #Carregando senhas
+    passwords = PasswordMananger()
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
